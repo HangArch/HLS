@@ -1,0 +1,306 @@
+{
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "title": "HVML",
+    "description": "Hang Virtual Machine Layer",
+    "type": "object",
+    "properties": {
+        "meta": {
+            "$ref": "#/definitions/metadata"
+        }
+    },
+    "definitions": {
+        "identifier": {
+            "maxLength": 32,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$"
+        },
+        "full_identifier": {
+            "maxLength": 64,
+            "minLength": 3,
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_]*\\.[A-Z][A-Z0-9_]*$",
+            "description": "A full identifier consists of a layer and primitive name.\nFormat: `layer_name.primitive_name`"
+        },
+        "dependencies": {
+            "type": "object",
+            "properties": {
+                "layers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/identifier"
+                    }
+                },
+                "registers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/full_identifier"
+                    }
+                },
+                "instructions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/full_identifier"
+                    }
+                },
+                "components": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/full_identifier"
+                    }
+                },
+                "depth_max": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "depth_min": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            },
+            "description": "List of required dependencies."
+        },
+        "metadata": {
+            "properties": {
+                "author": {
+                    "$ref": "#/definitions/identifier"
+                },
+                "about": {
+                    "maxLength": 128,
+                    "type": "string",
+                    "description": "Short description."
+                },
+                "description": {
+                    "maxLength": 1024,
+                    "type": "string",
+                    "description": "Long description."
+                },
+                "title": {
+                    "maxLength": 64,
+                    "type": "string"
+                },
+                "version": {
+                    "pattern": "^(?:(\\d+)\\.)?(?:(\\d+)\\.)?(?:(\\d+)\\.\\d+)$",
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "dependencies": {
+                    "$ref": "#/definitions/dependencies"
+                }
+            }
+        },
+        "layer": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/metadata",
+                    "required": [
+                        "name",
+                        "version"
+                    ]
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "$ref": "#/definitions/identifier"
+                        },
+                        "registers": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/register"
+                            }
+                        },
+                        "instructions": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/instruction"
+                            }
+                        },
+                        "components": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/component"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "primitive": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/metadata"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "pattern": "^[A-Z][A-Z0-9_]*$",
+                            "description": "The unique name of the primitive within the same type. That is, the simultaneous existence of a component named `TEST` and a register named `TEST` is acceptable."
+                        },
+                        "alias": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/identifier"
+                            }
+                        },
+                        "tags": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "value_type": {
+            "type": "string",
+            "enum": [
+                "immediate",
+                "register",
+                "instruction",
+                "component",
+                "int",
+                "uint",
+                "string"
+            ],
+            "description": "`immediate` - an immediate value\n`register` - a register address\n`instruction` - an instruction opcode\n`component` - a component id\n`int` - an signed integer\n`uint` - an unsigned integer\n`string` - a string"
+        },
+        "register": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/primitive"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "address": {
+                            "minimum": 0,
+                            "type": "integer"
+                        },
+                        "access": {
+                            "enum": [
+                                "r",
+                                "w",
+                                "rw"
+                            ],
+                            "type": "string",
+                            "default": "rw",
+                            "description": "`r` - read only\n`w` - write only\n`rw` - read and write"
+                        },
+                        "format": {
+                            "$ref": "#/definitions/value_type"
+                        },
+                        "volatile": {
+                            "type": "boolean",
+                            "default": false,
+                            "description": "`true` - register can be modified at any time\n`false` - register can be modified only by the CPU"
+                        },
+                        "constant": {
+                            "type": "boolean",
+                            "default": false,
+                            "description": "`true` - the value can change once (including without using the CPU)\n`false` - the value can change any number of times"
+                        },
+                        "default_value": {
+                            "minimum": 0,
+                            "type": "integer",
+                            "default": 0,
+                            "description": "Default value of the register."
+                        }
+                    },
+                    "required": [
+                        "address",
+                        "format",
+                        "access",
+                        "volatile"
+                    ]
+                }
+            ]
+        },
+        "instruction": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/primitive"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "annotation": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Additional information about the operands of the instruction."
+                        },
+                        "opcode": {
+                            "type": "integer",
+                            "minimum": 0
+                        },
+                        "operands": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/value_type"
+                            }
+                        },
+                        "parallel": {
+                            "type": "boolean",
+                            "default": false,
+                            "description": "Can the instruction be executed in parallelly."
+                        }
+                    },
+                    "required": [
+                        "opcode",
+                        "operands",
+                        "parallel"
+                    ]
+                }
+            ]
+        },
+        "component": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/primitive"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "integer",
+                            "minimum": 0
+                        },
+                        "access": {
+                            "enum": [
+                                "r",
+                                "w",
+                                "rw"
+                            ],
+                            "type": "string",
+                            "default": "rw",
+                            "description": "`r` - read only\n`w` - write only\n`rw` - read and write"
+                        },
+                        "volatile": {
+                            "type": "boolean",
+                            "default": false,
+                            "description": "`true` - component can be modified at any time\n`false` - component can be modified only by the CPU, i.e. component implemented as regular buffer"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "access",
+                        "volatile"
+                    ]
+                }
+            ]
+        }
+    },
+    "allOf": [
+        {
+            "$ref": "#/definitions/layer"
+        }
+    ]
+}

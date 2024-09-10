@@ -1,0 +1,44 @@
+name: l_example1
+type: local
+version: "1.0"
+license: MIT
+author: HangArch
+about: Example layer
+description: Example layer with simple primitives
+registers:
+  - title: Program Counter
+    description: Program Counter
+    name: PC
+    address: 0x01
+    access: rw
+    format: immediate
+    volatile: false
+    default_value: 0
+  - title: Depth
+    description: Information about bit depth of current machine
+    name: DEPTH
+    address: 0x02
+    access: r
+    format: uint
+    volatile: true
+    constant: true
+instructions:
+  - title: Move
+    description: Move value to register
+    test: 213
+    annotation:
+      - Register address
+      - Value is moved to register
+    opcode: 0x01
+    operands:
+      - register
+      - immediate
+    parallel: true
+components:
+  - title: Terminal
+    description: Terminal component
+    name: TERM
+    id: 0x00
+    access: r
+    format: string
+    volatile: true

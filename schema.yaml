@@ -1,0 +1,246 @@
+$schema: https://json-schema.org/draft-07/schema
+title: HVML
+description: Hang Virtual Machine Layer
+type: object
+properties:
+  meta:
+    $ref: '#/definitions/metadata'
+definitions:
+  identifier:
+    maxLength: 32
+    minLength: 1
+    pattern: ^[a-zA-Z][a-zA-Z0-9_]*$
+  full_identifier:
+    maxLength: 64
+    minLength: 3
+    pattern: ^[a-zA-Z][a-zA-Z0-9_]*\.[A-Z][A-Z0-9_]*$
+    description: |-
+      A full identifier consists of a layer and primitive name.
+      Format: `layer_name.primitive_name`
+  dependencies:
+    type: object
+    properties:
+      layers:
+        type: array
+        items:
+          $ref: '#/definitions/identifier'
+      registers:
+        type: array
+        items:
+          $ref: '#/definitions/full_identifier'
+      instructions:
+        type: array
+        items:
+          $ref: '#/definitions/full_identifier'
+      components:
+        type: array
+        items:
+          $ref: '#/definitions/full_identifier'
+      depth_max:
+        type: integer
+        minimum: 0
+      depth_min:
+        type: integer
+        minimum: 0
+    description: List of required dependencies.
+  metadata:
+    properties:
+      author:
+        type: string
+        maxLength: 32
+      about:
+        type: string
+        maxLength: 128
+        description: Short description.
+      description:
+        type: string
+        maxLength: 1024
+        description: Long description.
+      title:
+        type: string
+        maxLength: 64
+      version:
+        pattern: ^(?:(\d+)\.)?(?:(\d+)\.)?(?:(\d+)\.\d+)$
+        type: string
+      tags:
+        type: array
+        items:
+          type: string
+      dependencies:
+        $ref: '#/definitions/dependencies'
+  layer:
+    allOf:
+    - $ref: '#/definitions/metadata'
+      required:
+      - name
+      - version
+    - type: object
+      properties:
+        name:
+          $ref: '#/definitions/identifier'
+        type:
+          type: string
+          enum:
+          - official
+          - community
+          - local
+          description: |-
+            The type of the layer.
+            `official` - a stable layer published by the HangArch organization.
+            `community` - an unstable layer with not always canonical primitives. Published by the HangArch community.
+            `local` - local, unpublished layer.
+        registers:
+          type: array
+          items:
+            $ref: '#/definitions/register'
+        instructions:
+          type: array
+          items:
+            $ref: '#/definitions/instruction'
+        components:
+          type: array
+          items:
+            $ref: '#/definitions/component'
+    required:
+    - name
+    - type
+    - registers
+    - instructions
+    - components
+  primitive:
+    allOf:
+    - $ref: '#/definitions/metadata'
+    - type: object
+      properties:
+        name:
+          $ref: '#/definitions/identifier'
+          description: >-
+            A unique case-insensitive primitive name
+            within the same type. That is, the simultaneous
+            existence of a component named `TEST` and a
+            register named `TEST` is acceptable.
+        alias:
+          type: array
+          items:
+            $ref: '#/definitions/identifier'
+        tags:
+          type: array
+          items:
+            type: string
+  value_type:
+    type: string
+    enum:
+    - immediate
+    - register
+    - instruction
+    - component
+    - int
+    - uint
+    - string
+    description: |-
+      `immediate` - an immediate value
+      `register` - a register address
+      `instruction` - an instruction opcode
+      `component` - a component id
+      `int` - an signed integer
+      `uint` - an unsigned integer
+      `string` - a string
+  register:
+    allOf:
+    - $ref: '#/definitions/primitive'
+    - type: object
+      properties:
+        address:
+          minimum: 0
+          type: integer
+        access:
+          enum:
+          - r
+          - w
+          - rw
+          type: string
+          default: rw
+          description: |-
+            `r` - read only
+            `w` - write only
+            `rw` - read and write
+        format:
+          $ref: '#/definitions/value_type'
+        volatile:
+          type: boolean
+          default: false
+          description: |-
+            `true` - register can be modified at any time
+            `false` - register can be modified only by the CPU
+        constant:
+          type: boolean
+          default: false
+          description: |-
+            `true` - the value can change once (including without using the CPU)
+            `false` - the value can change any number of times
+        default_value:
+          minimum: 0
+          type: integer
+          default: 0
+          description: Default value of the register.
+      required:
+      - address
+      - format
+      - access
+      - volatile
+  instruction:
+    allOf:
+    - $ref: '#/definitions/primitive'
+    - type: object
+      properties:
+        annotation:
+          type: array
+          items:
+            type: string
+          description: Additional information about the operands of the instruction.
+        opcode:
+          type: integer
+          minimum: 0
+        operands:
+          type: array
+          items:
+            $ref: '#/definitions/value_type'
+        parallel:
+          type: boolean
+          default: false
+          description: Can the instruction be executed in parallelly.
+      required:
+      - opcode
+      - operands
+      - parallel
+  component:
+    allOf:
+    - $ref: '#/definitions/primitive'
+    - type: object
+      properties:
+        id:
+          type: integer
+          minimum: 0
+        access:
+          enum:
+          - r
+          - w
+          - rw
+          type: string
+          default: rw
+          description: |-
+            `r` - read only
+            `w` - write only
+            `rw` - read and write
+        volatile:
+          type: boolean
+          default: false
+          description: |-
+            `true` - component can be modified at any time
+            `false` - component can be modified only by the CPU, i.e. component implemented as regular buffer
+      required:
+      - id
+      - access
+      - volatile
+allOf:
+- $ref: '#/definitions/layer'
